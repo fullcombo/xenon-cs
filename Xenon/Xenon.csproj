@@ -70,7 +70,9 @@
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <None Include="clientsecret" />
+  </ItemGroup>
   <ItemGroup>
     <None Include="assets\logo.png" />
   </ItemGroup>

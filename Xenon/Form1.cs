@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.Text;
+using System.IO;
 using System.Windows.Forms;
 using System.Net;
 using System.Threading;
@@ -148,6 +149,34 @@ namespace Xenon
                 textBoxPassword.Enabled = false;
                 SetProgressBar(50);
                 SetStatusText("Logging in...");
+
+                // Begin login logic.
+                string ClientID = File.ReadAllText("clientid");
+                string ClientSecret = File.ReadAllText("clientsecret");
+                WebRequest loginrequest = WebRequest.Create(BuildURI("oauth/token"));
+                
+                var postData = "username=" + textBoxUsername.Text;
+                    postData += "&password=" + textBoxPassword.Text;
+                    postData += "&grant_type=password";
+                    postData += "&client_id=" + ClientID;
+                    postData += "&client_secret=" + ClientSecret;
+                var data = Encoding.ASCII.GetBytes(postData);
+
+                loginrequest.Method = "POST";
+                loginrequest.ContentType = "application/x-www-form-urlencoded";
+                loginrequest.ContentLength = data.Length;
+
+                using (var stream = loginrequest.GetRequestStream())
+                {
+                    stream.Write(data, 0, data.Length);
+                }
+
+                var loginResponse = (HttpWebResponse)loginrequest.GetResponse();
+
+                var loginResponseString = new StreamReader(loginResponse.GetResponseStream()).ReadToEnd();
+
+                Console.Write(loginResponseString);
+
             }
             else if (textBoxUsername.TextLength == 0)
             {
