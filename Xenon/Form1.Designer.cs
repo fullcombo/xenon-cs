@@ -36,9 +36,10 @@
             this.labelPassword = new System.Windows.Forms.Label();
             this.buttonLogin = new System.Windows.Forms.Button();
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
-            this.toolStripStatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
             this.toolStripProgressBar1 = new System.Windows.Forms.ToolStripProgressBar();
-            this.backgroundWorker1 = new System.ComponentModel.BackgroundWorker();
+            this.toolStripStatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
+            this.bW_ServerStatus = new System.ComponentModel.BackgroundWorker();
+            this.bW_Login = new System.ComponentModel.BackgroundWorker();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.statusStrip1.SuspendLayout();
             this.SuspendLayout();
@@ -106,7 +107,7 @@
             this.buttonLogin.TabIndex = 3;
             this.buttonLogin.Text = "Log On";
             this.buttonLogin.UseVisualStyleBackColor = true;
-            this.buttonLogin.Click += new System.EventHandler(this.buttonLogin_Click);
+            this.buttonLogin.Click += new System.EventHandler(this.ButtonLogin_Click);
             // 
             // statusStrip1
             // 
@@ -120,6 +121,11 @@
             this.statusStrip1.TabIndex = 6;
             this.statusStrip1.Text = "statusStrip1";
             // 
+            // toolStripProgressBar1
+            // 
+            this.toolStripProgressBar1.Name = "toolStripProgressBar1";
+            this.toolStripProgressBar1.Size = new System.Drawing.Size(200, 16);
+            // 
             // toolStripStatusLabel1
             // 
             this.toolStripStatusLabel1.ActiveLinkColor = System.Drawing.Color.Blue;
@@ -130,17 +136,18 @@
             this.toolStripStatusLabel1.Text = "Establishing connection to server...";
             this.toolStripStatusLabel1.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             // 
-            // toolStripProgressBar1
+            // bW_ServerStatus
             // 
-            this.toolStripProgressBar1.Name = "toolStripProgressBar1";
-            this.toolStripProgressBar1.Size = new System.Drawing.Size(200, 16);
+            this.bW_ServerStatus.WorkerReportsProgress = true;
+            this.bW_ServerStatus.DoWork += new System.ComponentModel.DoWorkEventHandler(this.bW_ServerStatus_DoWork);
+            this.bW_ServerStatus.ProgressChanged += new System.ComponentModel.ProgressChangedEventHandler(this.bW_ServerStatus_ProgressChanged);
+            this.bW_ServerStatus.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(this.bW_ServerStatus_RunWorkerCompleted);
             // 
-            // backgroundWorker1
+            // bW_Login
             // 
-            this.backgroundWorker1.WorkerReportsProgress = true;
-            this.backgroundWorker1.DoWork += new System.ComponentModel.DoWorkEventHandler(this.backgroundWorker1_DoWork);
-            this.backgroundWorker1.ProgressChanged += new System.ComponentModel.ProgressChangedEventHandler(this.backgroundWorker1_ProgressChanged);
-            this.backgroundWorker1.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(this.backgroundWorker1_RunWorkerCompleted);
+            this.bW_Login.DoWork += new System.ComponentModel.DoWorkEventHandler(this.bW_Login_DoWork);
+            this.bW_Login.ProgressChanged += new System.ComponentModel.ProgressChangedEventHandler(this.bW_Login_ProgressChanged);
+            this.bW_Login.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(this.bW_Login_RunWorkerCompleted);
             // 
             // Form1
             // 
@@ -179,7 +186,8 @@
         private System.Windows.Forms.StatusStrip statusStrip1;
         private System.Windows.Forms.ToolStripProgressBar toolStripProgressBar1;
         private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabel1;
-        private System.ComponentModel.BackgroundWorker backgroundWorker1;
+        private System.ComponentModel.BackgroundWorker bW_ServerStatus;
+        private System.ComponentModel.BackgroundWorker bW_Login;
     }
 }
 

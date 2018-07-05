@@ -9,6 +9,8 @@ using System.Windows.Forms;
 using System.Net;
 using System.Threading;
 using System.Xml;
+using System.Web;
+using Newtonsoft.Json;
 
 namespace Xenon
 {
@@ -17,7 +19,7 @@ namespace Xenon
         public Form1()
         {
             InitializeComponent();
-            backgroundWorker1.RunWorkerAsync();
+            bW_ServerStatus.RunWorkerAsync();
         }
 
         private void SetStatusText(string text)
@@ -64,7 +66,7 @@ namespace Xenon
                 newconfig.Save("config.xml");
                 return 1;
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 return 0;
             }
@@ -87,7 +89,7 @@ namespace Xenon
             {
                 int build = BuildConfigFile();
             }
-            backgroundWorker1.ReportProgress(50);
+            bW_ServerStatus.ReportProgress(50);
 
             HttpWebRequest httpReq = (HttpWebRequest)WebRequest.Create(BuildURI("api/ok"));
             httpReq.AllowAutoRedirect = false;
@@ -105,6 +107,75 @@ namespace Xenon
             }
         }
 
+        public class Token
+        {
+            public string token_type { get; set; }
+            public int expires_in { get; set; }
+            public string access_token { get; set; }
+            public string refresh_token { get; set; }
+        }
+
+        public int Login(TextBox textBoxUsername, TextBox textBoxPassword)
+        {
+            // Begin login logic.
+            WebRequest loginrequest = WebRequest.Create(BuildURI("oauth/token"));
+
+            var postData = "username=" + HttpUtility.UrlEncode(textBoxUsername.Text);
+            postData += "&password=" + HttpUtility.UrlEncode(textBoxPassword.Text);
+            postData += "&grant_type=password";
+            postData += "&client_id=2";
+            postData += "&client_secret=XEh8Q8JKmOvTNX2g7QXtrRLzwSO1XQuWpge04zRB";
+            var data = Encoding.ASCII.GetBytes(postData);
+            
+            loginrequest.Method = "POST";
+            loginrequest.ContentType = "application/x-www-form-urlencoded";
+            loginrequest.ContentLength = data.Length;
+
+            using (var stream = loginrequest.GetRequestStream())
+            {
+                stream.Write(data, 0, data.Length);
+            }
+
+            try
+            {
+                var loginResponse = (HttpWebResponse)loginrequest.GetResponse();
+                var loginResponseString = new StreamReader(loginResponse.GetResponseStream()).ReadToEnd();
+                Console.WriteLine("0");
+                Token json_response = JsonConvert.DeserializeObject<Token>(loginResponseString);
+                XmlDocument config = new XmlDocument();
+                try
+                {
+                    config.Load("config.xml");
+                }
+                catch (System.IO.FileNotFoundException e)
+                {
+                    int build = BuildConfigFile();
+                }
+                catch (XmlException e)
+                {
+                    int build = BuildConfigFile();
+                }
+                XmlNode auth = config.SelectSingleNode("//auth");
+                auth.Attributes["access_token"].Value = json_response.access_token;
+                auth.Attributes["refresh_token"].Value = json_response.refresh_token;
+                config.Save("config.xml");
+
+                return 0;
+            }
+            catch (WebException we)
+            {
+                if (((HttpWebResponse)we.Response).StatusCode.ToString() == "Unauthorized")
+                {
+                    Console.WriteLine("401");
+                    return 401;
+                }
+                else {
+                    Console.WriteLine("500");
+                    return 500;
+                }
+            }
+        }
+
         private string GetCatalogHash()
         {
             WebClient client = new WebClient();
@@ -112,17 +183,17 @@ namespace Xenon
             return client.DownloadString(uri);
         }
 
-        private void backgroundWorker1_DoWork(object sender, DoWorkEventArgs e)
+        private void bW_ServerStatus_DoWork(object sender, DoWorkEventArgs e)
         {
             e.Result = GetServerStatus();
         }
 
-        private void backgroundWorker1_ProgressChanged(object sender, ProgressChangedEventArgs e)
+        private void bW_ServerStatus_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
             toolStripProgressBar1.Value = e.ProgressPercentage;
         }
 
-        private void backgroundWorker1_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        private void bW_ServerStatus_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
             if ((int)e.Result == 200)
             {
@@ -146,7 +217,7 @@ namespace Xenon
             }
         }
 
-        private void buttonLogin_Click(object sender, EventArgs e)
+        private void ButtonLogin_Click(object sender, EventArgs e)
         {
             SetProgressBar(0);
             if (textBoxUsername.TextLength > 0 && textBoxPassword.TextLength > 0)
@@ -156,34 +227,7 @@ namespace Xenon
                 textBoxPassword.Enabled = false;
                 SetProgressBar(50);
                 SetStatusText("Logging in...");
-
-                // Begin login logic.
-                string ClientID = File.ReadAllText("clientid");
-                string ClientSecret = File.ReadAllText("clientsecret");
-                WebRequest loginrequest = WebRequest.Create(BuildURI("oauth/token"));
-                
-                var postData = "username=" + textBoxUsername.Text;
-                    postData += "&password=" + textBoxPassword.Text;
-                    postData += "&grant_type=password";
-                    postData += "&client_id=" + ClientID;
-                    postData += "&client_secret=" + ClientSecret;
-                var data = Encoding.ASCII.GetBytes(postData);
-
-                loginrequest.Method = "POST";
-                loginrequest.ContentType = "application/x-www-form-urlencoded";
-                loginrequest.ContentLength = data.Length;
-
-                using (var stream = loginrequest.GetRequestStream())
-                {
-                    stream.Write(data, 0, data.Length);
-                }
-
-                var loginResponse = (HttpWebResponse)loginrequest.GetResponse();
-
-                var loginResponseString = new StreamReader(loginResponse.GetResponseStream()).ReadToEnd();
-
-                Console.Write(loginResponseString);
-
+                bW_Login.RunWorkerAsync();
             }
             else if (textBoxUsername.TextLength == 0)
             {
@@ -206,6 +250,22 @@ namespace Xenon
             {
                 buttonLogin.PerformClick();
             }
+        }
+
+        private void bW_Login_DoWork(object sender, DoWorkEventArgs e)
+        {
+            
+            e.Result = Login(textBoxUsername, textBoxPassword);
+        }
+
+        private void bW_Login_ProgressChanged(object sender, ProgressChangedEventArgs e)
+        {
+
+        }
+
+        private void bW_Login_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        {
+            
         }
     }
 }
