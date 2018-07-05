@@ -58,8 +58,15 @@ namespace Xenon
             configRoot.AppendChild(configAuth);
             configRoot.AppendChild(configApp);
             newconfig.AppendChild(configRoot);
-            newconfig.Save("config.xml");
-            return 1;
+            try
+            {
+                newconfig.Save("config.xml");
+                return 1;
+            }
+            catch (Exception e)
+            {
+                return 0;
+            }
         }
 
         public int GetServerStatus() // This is run in a thread to verify the server's around and listening.
