@@ -145,6 +145,7 @@
             // 
             // bW_Login
             // 
+            this.bW_Login.WorkerReportsProgress = true;
             this.bW_Login.DoWork += new System.ComponentModel.DoWorkEventHandler(this.bW_Login_DoWork);
             this.bW_Login.ProgressChanged += new System.ComponentModel.ProgressChangedEventHandler(this.bW_Login_ProgressChanged);
             this.bW_Login.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(this.bW_Login_RunWorkerCompleted);

@@ -43,6 +43,8 @@ namespace Xenon
             XmlDocument newconfig = new XmlDocument();
             XmlNode configRoot = newconfig.CreateElement("xenon");
                 XmlElement configAuth = newconfig.CreateElement("auth");
+                    XmlAttribute configAuthUsername = newconfig.CreateAttribute("username");
+                    configAuth.Attributes.Append(configAuthUsername);
                     XmlAttribute configAuthAccessToken = newconfig.CreateAttribute("access_token");
                     configAuth.Attributes.Append(configAuthAccessToken);
                     XmlAttribute configAuthRefreshToken = newconfig.CreateAttribute("refresh_token");
@@ -72,14 +74,23 @@ namespace Xenon
             }
         }
 
-        public int GetServerStatus() // This is run in a thread to verify the server's around and listening.
+        public int GetServerStatus(TextBox textBoxUsername, TextBox textBoxPassword) // This is run in a thread to verify the server's around and listening.
         {
             // Check for a config file and make one if not present.
 
             XmlDocument config = new XmlDocument();
+            int hasToken = 0;
             try
             {
                 config.Load("config.xml");
+                XmlNode auth = config.SelectSingleNode("//auth");
+                if (auth.Attributes["access_token"].Value.Length > 0)
+                {
+                    hasToken = 1;
+                }
+                //textBoxUsername.Text = auth.Attributes["username"].Value;
+                //textBoxPassword.Text = "Why do you need Konami Original songs?";
+                //hasToken = 1; // lets make sure the token is good next.
             }
             catch (System.IO.FileNotFoundException e)
             {
@@ -96,6 +107,30 @@ namespace Xenon
             try
             {
                 HttpWebResponse httpRes = (HttpWebResponse)httpReq.GetResponse();
+                if ((int)httpRes.StatusCode == 200) // it's in the wrong goddamn block
+                {
+                    if (hasToken == 1) // we have cached creds.
+                    {
+                        config.Load("config.xml");
+                        XmlNode auth = config.SelectSingleNode("//auth");
+                        string access_token = auth.Attributes["access_token"].Value;
+
+                        HttpWebRequest validateTokenRequest = (HttpWebRequest)WebRequest.Create(BuildURI("api/user"));
+                        WebHeaderCollection validateTokenRequestHeaders = validateTokenRequest.Headers;
+                        validateTokenRequestHeaders.Add("Authorization: Bearer " + access_token);
+
+                        HttpWebResponse validateTokenResponse = (HttpWebResponse)validateTokenRequest.GetResponse();
+                        if (validateTokenResponse.ResponseUri.ToString() == BuildURI("login")) // access_token is malformed or expired
+                        {
+                            return 200;
+                        }
+                        else if (validateTokenResponse.ResponseUri.ToString() == BuildURI("api/user")) // access_token is valid
+                        {
+                            return 1;
+                        }
+                    }
+                    else return 200;
+                }
                 return (int)httpRes.StatusCode;
             }
             catch (WebException e) // 4xx and 5xx status codes return as an Exception
@@ -103,20 +138,20 @@ namespace Xenon
                 HttpWebResponse httpRes = (HttpWebResponse)e.Response;
                 if (e.Status.ToString() == "ConnectFailure") // No response at all isn't handled via an HTTP status code.
                 { return 0; }
+
                 return (int)httpRes.StatusCode;
             }
         }
 
         public class Token
         {
-            public string token_type { get; set; }
-            public int expires_in { get; set; }
             public string access_token { get; set; }
             public string refresh_token { get; set; }
         }
 
         public int Login(TextBox textBoxUsername, TextBox textBoxPassword)
         {
+            bW_Login.ReportProgress(33);
             // Begin login logic.
             WebRequest loginrequest = WebRequest.Create(BuildURI("oauth/token"));
 
@@ -140,27 +175,17 @@ namespace Xenon
             {
                 var loginResponse = (HttpWebResponse)loginrequest.GetResponse();
                 var loginResponseString = new StreamReader(loginResponse.GetResponseStream()).ReadToEnd();
-                Console.WriteLine("0");
                 Token json_response = JsonConvert.DeserializeObject<Token>(loginResponseString);
                 XmlDocument config = new XmlDocument();
-                try
-                {
-                    config.Load("config.xml");
-                }
-                catch (System.IO.FileNotFoundException e)
-                {
-                    int build = BuildConfigFile();
-                }
-                catch (XmlException e)
-                {
-                    int build = BuildConfigFile();
-                }
+                config.Load("config.xml");
                 XmlNode auth = config.SelectSingleNode("//auth");
+                auth.Attributes["username"].Value = textBoxUsername.Text;
                 auth.Attributes["access_token"].Value = json_response.access_token;
                 auth.Attributes["refresh_token"].Value = json_response.refresh_token;
                 config.Save("config.xml");
+                bW_Login.ReportProgress(66);
 
-                return 0;
+                return 200;
             }
             catch (WebException we)
             {
@@ -185,7 +210,7 @@ namespace Xenon
 
         private void bW_ServerStatus_DoWork(object sender, DoWorkEventArgs e)
         {
-            e.Result = GetServerStatus();
+            e.Result = GetServerStatus(textBoxUsername, textBoxPassword);
         }
 
         private void bW_ServerStatus_ProgressChanged(object sender, ProgressChangedEventArgs e)
@@ -202,6 +227,13 @@ namespace Xenon
                 textBoxPassword.Enabled = true;
                 buttonLogin.Enabled = true;
                 SetStatusText("Connected.");
+            }
+
+            else if((int)e.Result == 1) // We've got a valid access token to use.
+            {
+                FormMainMenu formMainMenu = new FormMainMenu();
+                formMainMenu.Show();
+                this.Visible = false;
             }
 
             else if((int)e.Result == 0) // Server's down or no network.
@@ -260,12 +292,18 @@ namespace Xenon
 
         private void bW_Login_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
-
+            toolStripProgressBar1.Value = e.ProgressPercentage;
         }
 
         private void bW_Login_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
-            
+            if ((int)e.Result == 200)
+            {
+                FormMainMenu formMainMenu = new FormMainMenu();
+                formMainMenu.Show();
+                this.Visible = false;
+                this.Close();
+            }
         }
     }
 }
